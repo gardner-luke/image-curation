@@ -2,6 +2,8 @@
 
 A comprehensive ML pipeline for processing image datasets, registering CLIP models, and generating embeddings for vector search, similarity matching, and dataset deduplication.
 
+<img width="1645" height="775" alt="Screenshot 2025-09-30 at 10 30 15 PM" src="https://github.com/user-attachments/assets/5b1c325a-3ec6-478b-849f-23be8e687429" />
+
 ## Overview
 
 This pipeline enables you to:
