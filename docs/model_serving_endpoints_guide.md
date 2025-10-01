@@ -8,7 +8,7 @@ CLIP text and image embedding models deployed on Databricks Model Serving for se
 - `clip-text-embedding` - Text to 768-dimensional embeddings
 - `clip-image-embedding` - Images to 768-dimensional embeddings
 
-**Models:** `autobricks.agriculture.clip_text_embedding` and `autobricks.agriculture.clip_image_embedding`
+**Models:** `[your_catalog].[your_schema].clip_text_embedding` and `[your_catalog].[your_schema].clip_image_embedding`
 
 ---
 
@@ -29,7 +29,7 @@ w = WorkspaceClient()  # Uses default authentication (env vars, .databrickscfg, 
 import pandas as pd
 
 # Single text embedding
-input_df = pd.DataFrame({"input": ["A farmer working in a wheat field"]})
+input_df = pd.DataFrame({"input": ["A person working in an office"]})
 response = w.serving_endpoints.query(
     name="clip-text-embedding",
     dataframe_records=input_df.to_dict('records')
@@ -42,9 +42,9 @@ embedding = response.predictions[0]  # 768-dimensional vector
 ```python
 # Multiple texts at once
 texts = [
-    "Corn crops growing in summer",
-    "Agricultural machinery harvesting",
-    "Wheat field in autumn"
+    "Modern building architecture",
+    "Technology equipment setup",
+    "Urban landscape view"
 ]
 
 input_df = pd.DataFrame({"input": texts})
@@ -59,7 +59,7 @@ embeddings = response.predictions  # List of 768-dimensional vectors
 
 ```sql
 -- Single text embedding
-SELECT ai_query('clip-text-embedding', request => 'A farmer in the field') AS embedding;
+SELECT ai_query('clip-text-embedding', request => 'A person in the office') AS embedding;
 
 -- Batch from table
 SELECT 
@@ -81,7 +81,7 @@ from PIL import Image
 from io import BytesIO
 
 # Create test image and convert to base64
-test_image = Image.new('RGB', (224, 224), color='green')
+test_image = Image.new('RGB', (224, 224), color='blue')
 buffer = BytesIO()
 test_image.save(buffer, format='JPEG')
 image_b64 = base64.b64encode(buffer.getvalue()).decode('utf-8')
@@ -138,7 +138,7 @@ LIMIT 1;
 SELECT 
     image_id,
     ai_query('clip-image-embedding', request => image_base64) AS embedding
-FROM autobricks.agriculture.crop_images_directory_embeddings
+FROM [your_catalog].[your_schema].image_directory_embeddings
 LIMIT 10;
 ```
 
@@ -152,7 +152,7 @@ LIMIT 10;
 import mlflow
 
 # Load registered model from Unity Catalog
-model = mlflow.pyfunc.load_model("models:/autobricks.agriculture.clip_text_embedding/1")
+model = mlflow.pyfunc.load_model("models:/[your_catalog].[your_schema].clip_text_embedding/1")
 embeddings = model.predict(["Sample text", "Another text"])
 ```
 
@@ -160,7 +160,7 @@ embeddings = model.predict(["Sample text", "Another text"])
 
 ```python
 # Load registered model from Unity Catalog
-model = mlflow.pyfunc.load_model("models:/autobricks.agriculture.clip_image_embedding/1")
+model = mlflow.pyfunc.load_model("models:/[your_catalog].[your_schema].clip_image_embedding/1")
 embedding = model.predict([image_b64])  # Pass as list
 ```
 
@@ -171,7 +171,7 @@ from pyspark.sql.functions import col, udf
 from pyspark.sql.types import ArrayType, FloatType
 
 # Load model
-model = mlflow.pyfunc.load_model("models:/autobricks.agriculture.clip_image_embedding/1")
+model = mlflow.pyfunc.load_model("models:/[your_catalog].[your_schema].clip_image_embedding/1")
 
 def embedding_udf(image_base64):
     """Spark UDF to generate embeddings for each image."""
@@ -182,12 +182,12 @@ def embedding_udf(image_base64):
 
 # Register and apply UDF
 embedding_func = udf(embedding_udf, ArrayType(FloatType()))
-df = spark.table("autobricks.agriculture.crop_images_directory")
+df = spark.table("[your_catalog].[your_schema].image_directory")
 embedded_df = df.withColumn("embeddings", embedding_func(col("image_base64")))
 
 # Save results
 embedded_df.write.format("delta").mode("overwrite").saveAsTable(
-    "autobricks.agriculture.crop_images_directory_embeddings"
+    "[your_catalog].[your_schema].image_directory_embeddings"
 )
 ```
 
@@ -205,5 +205,51 @@ embedded_df.write.format("delta").mode("overwrite").saveAsTable(
 - Output: 768-dimensional vectors  
 - Optimal size: 224x224 pixels
 - Base: `openai/clip-vit-large-patch14`
+
+---
+
+## Configuration Examples
+
+Replace the following placeholders with your actual values:
+
+```python
+# Example configuration
+CATALOG_NAME = "your_catalog"
+SCHEMA_NAME = "your_schema"
+TEXT_MODEL_NAME = "clip_text_embedding"
+IMAGE_MODEL_NAME = "clip_image_embedding"
+TEXT_ENDPOINT_NAME = "clip-text-embedding"
+IMAGE_ENDPOINT_NAME = "clip-image-embedding"
+```
+
+**Example from agriculture use case:**
+```python
+CATALOG_NAME = "autobricks"
+SCHEMA_NAME = "agriculture"
+TEXT_MODEL_NAME = "clip_text_embedding"
+IMAGE_MODEL_NAME = "clip_image_embedding"
+```
+
+---
+
+## Use Cases
+
+These CLIP models can be used for:
+
+- **Semantic Search:** Find images using natural language descriptions
+- **Image Similarity:** Identify similar or duplicate images in your dataset
+- **Content Classification:** Automatically categorize images based on content
+- **Multi-modal Applications:** Bridge text and image understanding
+- **Dataset Curation:** Clean and organize large image collections
+
+---
+
+## Performance Tips
+
+- **Batch Processing:** Use batch queries for better throughput
+- **Image Size:** Resize images to 224x224 for optimal performance
+- **GPU Usage:** Ensure GPU endpoints are available for large-scale processing
+- **Caching:** Consider caching frequently used embeddings
+- **Parallel Processing:** Use Spark UDFs for distributed embedding generation
 
  
